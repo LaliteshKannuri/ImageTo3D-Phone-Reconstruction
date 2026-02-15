@@ -1,0 +1,180 @@
+# ========================================
+# IMPROVED Phone Mechanical Reconstruction Config
+# WITH ARTIFACT REMOVAL FIXES
+# ========================================
+
+# Model paths
+models:
+  depth_anything:
+    checkpoint: "models/depth_anything_v2_vitl.pth"
+    encoder: "vitl"
+  
+  yolo:
+    checkpoint: "models/yolov8_screws.pt"
+    confidence_threshold: 0.4  # Lowered for better detection
+    iou_threshold: 0.4
+
+# Calibration parameters
+calibration:
+  screw_diameter_mm: 3.0
+  depth_range_mm: 100.0
+  auto_calibrate: true
+
+# Depth estimation - IMPROVED
+depth:
+  # Enhanced bilateral filtering
+  bilateral_filter:
+    enabled: true
+    diameter: 11        # Increased from 9
+    sigma_color: 0.15   # Increased from 0.1
+    sigma_space: 7      # Increased from 5
+  
+  # Point cloud generation - MORE AGGRESSIVE FILTERING
+  point_cloud:
+    downsample_voxel_size: 0.0015  # Increased from 0.001
+    remove_outliers: true
+    outlier_neighbors: 30           # Increased from 20
+    outlier_std_ratio: 1.5          # Decreased from 2.0 (more aggressive)
+
+# Screw detection and modeling
+screws:
+  min_confidence: 0.4  # Lowered from 0.5
+  
+  types:
+    default:
+      height_mm: 2.5
+      thread_segments: 32
+      head_type: "cylinder"
+  
+  normal_estimation:
+    window_size: 5
+    method: "gradient"
+
+# Mesh generation - IMPROVED PARAMETERS
+mesh:
+  # Poisson surface reconstruction - OPTIMIZED
+  poisson:
+    depth: 8            # Reduced from 9 (cleaner, faster)
+    width: 0
+    scale: 1.05         # Reduced from 1.1 (tighter fit)
+    linear_fit: false
+  
+  # Mesh cleanup - ENABLE NON-MANIFOLD REMOVAL
+  cleanup:
+    remove_degenerate_triangles: true
+    remove_duplicated_vertices: true
+    remove_duplicated_triangles: true
+    remove_non_manifold_edges: true  # ENABLED!
+  
+  # Simplification
+  simplification:
+    enabled: false
+    target_reduction: 0.1
+
+# NEW: Mesh post-processing to remove artifacts
+mesh_postprocessing:
+  enabled: true
+  
+  # Remove boundary artifacts
+  remove_boundary_artifacts: true
+  boundary_density_threshold: 0.10  # Remove bottom 10% density vertices
+  
+  # Crop to point cloud bounding box
+  crop_to_pointcloud_bbox: true
+  bbox_expansion: 1.05  # 5% margin
+  
+  # Keep only largest connected component
+  remove_isolated_components: true
+  
+  # Mesh smoothing
+  laplacian_smoothing:
+    enabled: true
+    iterations: 10
+    lambda_filter: 0.5
+  
+  # Mesh simplification
+  simplification:
+    enabled: true
+    target_reduction: 0.3  # Remove 30% of triangles
+
+# Mesh fusion
+fusion:
+  boolean_ops:
+    enabled: true
+    method: "union"
+  fallback_to_concatenation: true
+
+# Export settings
+export:
+  obj:
+    enabled: true
+    write_vertex_normals: true
+    write_vertex_colors: false
+  
+  urdf:
+    enabled: true
+    robot_name: "phone"
+    base_link_name: "phone_base"
+    
+    physics:
+      mass: 0.17
+      inertia_scale: 1.0
+      friction: 0.5
+      restitution: 0.3
+    
+    collision:
+      use_simplified_mesh: false
+      convex_hull: false
+  
+  stl:
+    enabled: false
+    ascii: false
+
+# Visualization
+visualization:
+  enabled: true
+  save_images:
+    enabled: true
+    dpi: 300
+  show:
+    depth_map: true
+    detections: true
+    point_cloud: false
+    final_mesh: true
+
+# Processing
+processing:
+  device: "auto"
+  batch:
+    size: 1
+    num_workers: 4
+  logging:
+    level: "INFO"
+    save_log: true
+    log_file: "reconstruction.log"
+
+# Output
+output:
+  create_subdirs: true
+  naming:
+    use_timestamp: false
+    prefix: ""
+    suffix: ""
+  save_intermediate:
+    enabled: true
+    depth_map: true
+    detections: true
+    point_cloud: false
+
+# Advanced settings
+advanced:
+  error_handling:
+    continue_on_error: false
+    save_error_log: true
+  performance:
+    use_mixed_precision: false
+    optimize_memory: true
+  experimental:
+    multi_view_fusion: false
+    texture_mapping: false
+    detail_enhancement: false
